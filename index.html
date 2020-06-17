@@ -1,0 +1,9 @@
+<html>
+<script>
+var worker = new Worker('example.js');
+worker.onerror = function(err) { console.log(err); };
+worker.onmessage = function(event) {
+  console.log('Web worker message received', event);
+};
+</script>
+</html>
