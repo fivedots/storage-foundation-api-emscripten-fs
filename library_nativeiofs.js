@@ -105,6 +105,9 @@ mergeInto(LibraryManager.library, {
       return nativeIO.getAllSync().filter(name => name.startsWith(prefix))
     },
 
+    // Caches open file handles to simulate opening a file multiple times.
+    openFileHandles: {},
+
     /* Filesystem implementation (public interface) */
 
     createNode: function (parent, name, mode, dev) {
@@ -268,13 +271,18 @@ mergeInto(LibraryManager.library, {
         }
 
         if (stream.node.handle) {
+          //TODO: check when this code path is actually executed, it seems to
+          //duplicate some of the caching behavior below.
           stream.handle = stream.node.handle;
           ++stream.node.refcount;
         } else {
           var path = NATIVEIOFS.realPath(stream.node);
 
           // Open existing file.
-          stream.handle = nativeIO.openSync(NATIVEIOFS.encodePath(path));
+          if(!(path in NATIVEIOFS.openFileHandles)) {
+            NATIVEIOFS.openFileHandles[path] = nativeIO.openSync(NATIVEIOFS.encodePath(path));
+          }
+          stream.handle = NATIVEIOFS.openFileHandles[path];
           stream.node.handle = stream.handle;
           stream.node.refcount = 1;
         }
@@ -292,6 +300,7 @@ mergeInto(LibraryManager.library, {
         if (stream.node.refcount <= 0) {
           stream.node.handle.close();
           stream.node.handle = null;
+          delete NATIVEIOFS.openFileHandles[NATIVEIOFS.realPath(stream.node)];
         }
       },
 
