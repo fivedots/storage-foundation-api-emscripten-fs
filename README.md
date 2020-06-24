@@ -38,4 +38,4 @@ emrun --serve_after_exit --no_browser index.html
 
 And then open the following link in a Chrome instance with the
 "Experimental Web Platform features" flag enabled:
-[localhost:6931/wrapped.html](http://localhost:6931/index.html).
+[localhost:6931](http://localhost:6931/index.html).
