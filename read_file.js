@@ -3,7 +3,8 @@
 function readEmscriptenFile(path, offset, length) {
   var stream = FS.open(path);
   var buf = new Uint8Array(length);
-  FS.read(stream, buf, offset, length, 0);
+  FS.read(stream, buf, offset, length);
+  FS.close(stream);
   return buf;
 }
 
