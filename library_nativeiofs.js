@@ -349,9 +349,7 @@ mergeInto(LibraryManager.library, {
         if (whence === 1) {  // SEEK_CUR.
           position += stream.position;
         } else if (whence === 2) {  // SEEK_END.
-          throw new FS.ErrnoError({{{ cDefine('EOPNOTSUPP') }}});
-          //TODO: use getLength once it lands
-          //position += stream.handle.getLength();
+          position += stream.handle.getLength();
         } else if (whence !== 0) {  // SEEK_SET.
           throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
         }
