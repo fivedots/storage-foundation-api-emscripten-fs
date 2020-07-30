@@ -148,8 +148,22 @@ mergeInto(LibraryManager.library, {
     node_ops: {
       getattr: function(node) {
         NATIVEIOFS.debug('getattr', arguments);
-        console.log('NATIVEIOFS error: getattr is not implemented, returning',
-                      'zeroed struct');
+        if (node.handle) {
+          var length = node.handle.getLength();
+        } else {
+          // TODO: this double caching of opened files is probably redundant.
+          // Clean up after publishing a clean design for the FS.
+          var path = NATIVEIOFS.realPath(node);
+          if(path in NATIVEIOFS.openFileHandles) {
+            var fileHandle = NATIVEIOFS.openFileHandles[path]
+            var length = fileHandle.getLength();
+          } else {
+            var fileHandle = nativeIO.openSync(NATIVEIOFS.encodePath(path))
+            var length = fileHandle.getLength();
+            fileHandle.close();
+          }
+        }
+
         var modificationTime = new Date();
         return {
           dev: null,
@@ -159,12 +173,12 @@ mergeInto(LibraryManager.library, {
           uid: 0,
           gid: 0,
           rdev: null,
-          size: 0,
+          size: length,
           atime: modificationTime,
           mtime: modificationTime,
           ctime: modificationTime,
           blksize: 4096,
-          blocks: 0,
+          blocks: Math.ceil(length / 4096),
         };
       },
 
@@ -337,7 +351,7 @@ mergeInto(LibraryManager.library, {
         } else if (whence === 2) {  // SEEK_END.
           throw new FS.ErrnoError({{{ cDefine('EOPNOTSUPP') }}});
           //TODO: use getLength once it lands
-          //position += stream.handle.getLengthSync().size;
+          //position += stream.handle.getLength();
         } else if (whence !== 0) {  // SEEK_SET.
           throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
         }
