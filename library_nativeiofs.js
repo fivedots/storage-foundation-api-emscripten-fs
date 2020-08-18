@@ -40,6 +40,10 @@ mergeInto(LibraryManager.library, {
       return parts.join('_');
     },
 
+    encodedPath: function(node) {
+      return NATIVEIOFS.encodePath(NATIVEIOFS.realPath(node));
+    },
+
     joinPaths: function(path1, path2) {
       if (path1.endsWith('_')) {
         if (path2.startsWith('_')) {
@@ -184,9 +188,29 @@ mergeInto(LibraryManager.library, {
 
       setattr: function(node, attr) {
         NATIVEIOFS.debug('setattr', arguments);
-        //TODO: implement once setLength lands
-        console.log('NATIVEIOFS error: setattr is not implemented, but continuing',
-                      'without throwing');
+        if ('size' in attr) {
+          let useOpen = false;
+          let handle = node.handle;
+          try {
+            if (!handle) {
+	      // Open a handle that is closed later.
+              useOpen = true;
+              handle = nativeIO.openSync(NATIVEIOFS.encodedPath(node));
+            }
+	    handle.setLength(attr.size);
+          } catch (e) {
+            if (!('code' in e)) throw e;
+            throw new FS.ErrnoError(-e.errno);
+          } finally {
+            if (useOpen && handle) {
+              handle.close();
+            }
+          }
+        }
+	else {
+	  console.log('NATIVEIOFS error: setattr is not implemented, but continuing',
+		      'without throwing');
+	}
       },
 
       lookup: function (parent, name) {
