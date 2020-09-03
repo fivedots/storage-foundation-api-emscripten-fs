@@ -323,9 +323,7 @@ mergeInto(LibraryManager.library, {
         if (stream.handle == null) {
           throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
         }
-
-        console.log('NATIVEIOFS error: fsync is not implemented, but continuing',
-          'without throwing');
+        stream.handle.flush();
         return 0;
       },
 
