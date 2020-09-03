@@ -125,6 +125,7 @@ mergeInto(LibraryManager.library, {
       if (FS.isDir(mode)) {
         node.contents = {};
       }
+      node.timestamp = Date.now();
       return node;
     },
 
@@ -168,7 +169,7 @@ mergeInto(LibraryManager.library, {
           }
         }
 
-        var modificationTime = new Date();
+        var modificationTime = new Date(node.timestamp);
         return {
           dev: null,
           ino: null,
@@ -188,16 +189,22 @@ mergeInto(LibraryManager.library, {
 
       setattr: function(node, attr) {
         NATIVEIOFS.debug('setattr', arguments);
-        if ('size' in attr) {
+        if (attr.mode !== undefined) {
+          node.mode = attr.mode;
+        }
+        if (attr.timestamp !== undefined) {
+          node.timestamp = attr.timestamp;
+        }
+        if (attr.size !== undefined) {
           let useOpen = false;
           let handle = node.handle;
           try {
             if (!handle) {
-	      // Open a handle that is closed later.
+              // Open a handle that is closed later.
               useOpen = true;
               handle = nativeIO.openSync(NATIVEIOFS.encodedPath(node));
             }
-	    handle.setLength(attr.size);
+            handle.setLength(attr.size);
           } catch (e) {
             if (!('code' in e)) throw e;
             throw new FS.ErrnoError(-e.errno);
@@ -207,10 +214,6 @@ mergeInto(LibraryManager.library, {
             }
           }
         }
-	else {
-	  console.log('NATIVEIOFS error: setattr is not implemented, but continuing',
-		      'without throwing');
-	}
       },
 
       lookup: function (parent, name) {
@@ -363,6 +366,7 @@ mergeInto(LibraryManager.library, {
 
       write: function (stream, buffer, offset, length, position) {
         NATIVEIOFS.debug('write', arguments);
+        stream.node.timestamp = Date.now();
         var data = buffer.subarray(offset, offset + length);
         return stream.handle.write(data, position);
       },
