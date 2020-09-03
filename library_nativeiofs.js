@@ -323,7 +323,7 @@ mergeInto(LibraryManager.library, {
         if (stream.handle == null) {
           throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
         }
-	stream.handle.flush();
+        stream.handle.flush();
         return 0;
       },
 
