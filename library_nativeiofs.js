@@ -21,7 +21,7 @@ mergeInto(LibraryManager.library, {
     debug: function(...args) {
       // Uncomment to print debug information.
       //
-      console.log('nativeiofs', arguments);
+      // console.log('nativeiofs', arguments);
     },
 
     /* Helper functions */
