@@ -106,7 +106,7 @@ mergeInto(LibraryManager.library, {
 
 
     listByPrefix: function(prefix) {
-      return nativeIO.getAllSync().filter(name => name.startsWith(prefix))
+      return nativeIO.getAllSync().filter(name => name.startsWith(prefix));
     },
 
     // Caches open file handles to simulate opening a file multiple times.
@@ -160,10 +160,10 @@ mergeInto(LibraryManager.library, {
           // Clean up after publishing a clean design for the FS.
           var path = NATIVEIOFS.realPath(node);
           if(path in NATIVEIOFS.openFileHandles) {
-            var fileHandle = NATIVEIOFS.openFileHandles[path]
+            var fileHandle = NATIVEIOFS.openFileHandles[path];
             var length = fileHandle.getLength();
           } else {
-            var fileHandle = nativeIO.openSync(NATIVEIOFS.encodePath(path))
+            var fileHandle = nativeIO.openSync(NATIVEIOFS.encodePath(path));
             var length = fileHandle.getLength();
             fileHandle.close();
           }
@@ -253,8 +253,8 @@ mergeInto(LibraryManager.library, {
       mknod: function (parent, name, mode, dev) {
         NATIVEIOFS.debug('mknod', arguments);
         var node = NATIVEIOFS.createNode(parent, name, mode, dev);
-        if (!FS.isFile) {
-          console.log('NATIVEIOFS error: mknod is only implemented for files')
+        if (!FS.isFile(mode)) {
+          console.log('NATIVEIOFS error: mknod is only implemented for files');
           throw new FS.ErrnoError({{{ cDefine('ENOSYS') }}});
         }
 
