@@ -39,3 +39,10 @@ emrun --serve_after_exit --no_browser index.html
 And then open the following link in a Chrome instance with the
 "Experimental Web Platform features" flag enabled:
 [localhost:6931](http://localhost:6931/).
+
+## Experimental Asynchronous Filesystem
+
+An experimental attempt at an asynchronous Emscripten file system is included in
+folder `async/`. Unfortunately, it requires to modify the emscripten runtime by
+exchanging the syscalls in `src/library_syscalls.js` with their asynchronous
+counterparts of `async/library_syscall_async.js`. 

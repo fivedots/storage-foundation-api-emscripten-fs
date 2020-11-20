@@ -27,9 +27,9 @@ mergeInto(LibraryManager.library, {
     /* Syscalls */
 
     lastFileDescriptor: 100,
-    //Associates a fileDescriptor (a number) with a FileHandle. This file handle
-    //is the object obtained from calling nativeIO.open and may be expanded with new
-    //fields (e.g. seek_position)
+    // Associates a fileDescriptor (a number) with a FileHandle. This file handle
+    // is the object obtained from calling nativeIO.open and may be expanded with new
+    // fields (e.g. seek_position).
     fileDescriptorToFileHandle: {},
     pathToFileDescriptor: {},
 
