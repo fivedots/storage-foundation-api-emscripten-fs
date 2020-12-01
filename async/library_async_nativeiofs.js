@@ -74,10 +74,11 @@ mergeInto(LibraryManager.library, {
             crypto.getRandomValues(randomBuffer);
             let result =  randomBuffer[0];
           } catch (e) {
-            throw new FS.ErrnoError({{{ cDefine('EIO') }}});
+            console.log("Read failed with error", e)
+            return -{{{ cDefine('EIO') }}};
           }
           if (result === undefined && bytesRead === 0) {
-            throw new FS.ErrnoError({{{ cDefine('EAGAIN') }}});
+            return -{{{ cDefine('EAGAIN') }}};
           }
           if (result === null || result === undefined) break;
           bytesRead++;
@@ -164,7 +165,7 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_rdev, 'stat.rdev', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.__st_rdev_padding, '0', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_size, 'stat.size', 'i64') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_blksize, '4096', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_blksize, 'stat.st_blksize', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blocks, 'stat.blocks', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, '(stat.atime.getTime() / 1000)|0', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_nsec, '0', 'i32') }}};
@@ -311,7 +312,7 @@ mergeInto(LibraryManager.library, {
 
     write: async function(fd, buffer, offset, length, position) {
       if (length < 0 || position < 0) {
-        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
+        throw  new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
       var fh = AsyncFSImpl.fileDescriptorToFileHandle[fd];
       var seeking = typeof position !== 'undefined';
@@ -380,7 +381,7 @@ mergeInto(LibraryManager.library, {
         return 0;
       } catch(e) {
         console.log("Unlink failed with error", e);
-        return e;
+        return -{{{ cDefine('EAGAIN') }}};;
       }
     },
 

@@ -44,5 +44,7 @@ And then open the following link in a Chrome instance with the
 
 An experimental attempt at an asynchronous Emscripten file system is included in
 folder `async/`. Unfortunately, it requires to modify the emscripten runtime by
-exchanging the syscalls in `src/library_syscalls.js` with their asynchronous
-counterparts of `async/library_syscall_async.js`. 
+exchanging the syscalls in `src/library_syscalls.js` and `src/library_wasi.js`
+with their asynchronous counterparts of `async/library_syscall_async.js`. This
+has to be done by manually replacing them in the files; we are working on a more
+convenient method.
