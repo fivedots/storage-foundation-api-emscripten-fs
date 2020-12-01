@@ -39,6 +39,11 @@ mergeInto(LibraryManager.library, {
       return entries.includes(encodedPath);
     },
 
+    isDefaultDir: function(path) {
+      let kDefaultDirectories = ['/tmp', '/home', '/home/web_user/'];
+      return kDefaultDirectories.includes(path);
+    },
+
     encodePath: function(path) {
       //TODO: this is a aandom hex encoding decide and document on reasonable
       //scheme
@@ -170,7 +175,7 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i64') }}};
     },
 
-    doStat: async function(fh, buf) {
+    doFileStat: async function(fh, buf) {
       let length = await fh.getLength();
       let modificationTime = new Date(fh.timestamp);
       let stat = {
@@ -191,20 +196,48 @@ mergeInto(LibraryManager.library, {
       AsyncFSImpl.populateStatBuffer(stat, buf);
     },
 
+    doFolderStat: function(buf) {
+      let mode =  511 /* 0777 */;
+      mode &= {{{ cDefine('S_IRWXUGO') }}} | {{{ cDefine('S_ISVTX') }}};
+      mode |= {{{ cDefine('S_IFDIR') }}};
+      let modificationTime = new Date();
+      let stat = {
+          dev: null,
+          ino: null,
+          mode: mode,
+          nlink: 1,
+          uid: 0,
+          gid: 0,
+          rdev: null,
+          size: 0,
+          atime: modificationTime,
+          mtime: modificationTime,
+          ctime: modificationTime,
+          blksize: 4096,
+          blocks: 0,
+      };
+      AsyncFSImpl.populateStatBuffer(stat, buf);
+    },
+
     stat64: async function(pathname, buf) {
       let absolutePath = AsyncFSImpl.getAbsolutePath(pathname);
+      let isDefaultDir = AsyncFSImpl.isDefaultDir(absolutePath);
+      if (isDefaultDir) {
+        AsyncFSImpl.doFolderStat(buf);
+        return 0;
+      }
       let exists = await AsyncFSImpl.pathExists(absolutePath);
       if (!exists) return -{{{ cDefine('ENOENT') }}};
       if (absolutePath in AsyncFSImpl.pathToFileDescriptor) {
         let fd = AsyncFSImpl.pathToFileDescriptor[absolutePath];
         let fh = AsyncFSImpl.fileDescriptorToFileHandle[fd];
-        await AsyncFSImpl.doStat(fh, buf);
+        await AsyncFSImpl.doFileStat(fh, buf);
         return 0;
       }
       else {
         encodedPath = AsyncFSImpl.encodePath(absolutePath);
         let fh = await nativeIO.open(encodedPath);
-        await AsyncFSImpl.doStat(fh, buf);
+        await AsyncFSImpl.doFileStat(fh, buf);
         await fh.close();
         return 0;
       }
@@ -212,7 +245,7 @@ mergeInto(LibraryManager.library, {
 
     fstat64: async function(fd, buf) {
       let fh = AsyncFSImpl.fileDescriptorToFileHandle[fd];
-      await AsyncFSImpl.doStat(fh, buf);
+      await AsyncFSImpl.doFileStat(fh, buf);
       return 0;
     },
 
@@ -221,7 +254,18 @@ mergeInto(LibraryManager.library, {
     },
 
     access: async function(path, amode) {
-      return -{{{cDefine('ENOSYS')}}};
+      if (amode & ~{{{ cDefine('S_IRWXO') }}}) {
+        // need a valid mode
+        return -{{{ cDefine('EINVAL') }}};
+      }
+      let absolutePath = AsyncFSImpl.getAbsolutePath(path);
+      let isDefaultDir = AsyncFSImpl.isDefaultDir(absolutePath);
+      let exists = await AsyncFSImpl.pathExists(absolutePath);
+      if (!exists && !isDefaultDir) {
+        return -{{{ cDefine('ENOENT') }}};
+      }
+      // Ignore permissions.
+      return 0;
     },
 
     mkdir: async function(path, mode) {
@@ -249,11 +293,18 @@ mergeInto(LibraryManager.library, {
       return 0;// Pretend that the locking was successful.
     },
 
-    read: async function(fd, buffer, offset, length) {
+    read: async function(fd, buffer, offset, length, position) {
+      if (length < 0 || position < 0) {
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
+      }
       var fh = AsyncFSImpl.fileDescriptorToFileHandle[fd];
+      var seeking = typeof position !== 'undefined';
+      if (!seeking) {
+        position = fh.seek_position;
+      }
       var data = buffer.subarray(offset, offset + length);
-      let bytes_read = await fh.read(data, fh.seek_position);
-      fh.seek_position += bytes_read;
+      let bytes_read = await fh.read(data, position);
+      if (!seeking) fh.seek_position += bytes_read;
       buffer.set(data, offset);
       return bytes_read;
     },
@@ -295,7 +346,7 @@ mergeInto(LibraryManager.library, {
       return -{{{cDefine('ENOSYS')}}};
     },
 
-    readv: async function(fd, iovs) {
+    readv: async function(fd, iov, iovcnt, offset) {
       var ret = 0;
       for (var i = 0; i < iovcnt; i++) {
         var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
@@ -328,7 +379,7 @@ mergeInto(LibraryManager.library, {
         await nativeIO.delete(encodedPath);
         return 0;
       } catch(e) {
-        console.log("Unlink faild with error", e);
+        console.log("Unlink failed with error", e);
         return e;
       }
     },
@@ -347,6 +398,12 @@ mergeInto(LibraryManager.library, {
       var HIGH_OFFSET = 0x100000000; // 2^32
       // use an unsigned operator on low and shift high by 32-bits
       var offset = offset_high * HIGH_OFFSET + (offset_low >>> 0);
+
+      var DOUBLE_LIMIT = 0x20000000000000; // 2^53
+      // we also check for equality since DOUBLE_LIMIT + 1 == DOUBLE_LIMIT
+      if (offset <= -DOUBLE_LIMIT || offset >= DOUBLE_LIMIT) {
+        return -{{{ cDefine('EOVERFLOW') }}};
+      }
       var position = offset;
       if (whence === {{{ cDefine('SEEK_CUR') }}}) {
         position += AsyncFSImpl.fileDescriptorToFileHandle[fd].seek_position
