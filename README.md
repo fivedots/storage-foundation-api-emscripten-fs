@@ -1,18 +1,21 @@
-# NativeIO Emscripten Filesytem
+# Storage Foundation API Emscripten Filesytem
 
-This repo contains an Emscripten filesystem implementation that uses NativeIO
-as a backend. It must be run within a Web Worker, since it uses the synchronous
-version of the API.
+This repo contains an Emscripten filesystem implementation that uses Storage
+Foundation API as a backend. It must be run within a Web Worker, since it uses
+the synchronous version of the API.
 
 > NOTE: This filesystem is incomplete, it will be updated (and cleaned) as more
-> parts of NativeIO become accessible. Missing pieces include rename, setting
-> attributes, sub-directories, etc.
+> parts of Storage Foundation API become accessible. Missing pieces include
+> rename, setting attributes, sub-directories, etc.
 
 An example C++ program (example.cpp) is included. It show basic file operations
 and how to read a file from JavaScript.
 
 The mount_filesystems.js script shows how multiple filesystems can be made
 accessible to one module.
+
+Note: Storage Foundation API used to be called NativeIO. Some references to this
+name still remain, they will be removed after the new name has landed on Chrome.
 
 ## How-To
 
