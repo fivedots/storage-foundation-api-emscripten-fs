@@ -21,15 +21,15 @@
 using namespace std;
 
 int main () {
-  ofstream nativeIO_file;
+  ofstream storageFoundation_file;
   //Used to test that concurrent opens are possible
-  ofstream nativeIO_file2;
-  nativeIO_file.open ("/nativeio/nativeio_test");
-  nativeIO_file << "NativeIO!\n";
-  nativeIO_file2.open ("/nativeio/nativeio_test");
-  nativeIO_file.close();
-  nativeIO_file2.close();
-  EM_ASM(FS.truncate("/nativeio/nativeio_test", 5));
+  ofstream storageFoundation_file2;
+  storageFoundation_file.open ("/sfa/sfa_test");
+  storageFoundation_file << "Storage Foundation API!\n";
+  storageFoundation_file2.open ("/sfa/sfa_test");
+  storageFoundation_file.close();
+  storageFoundation_file2.close();
+  EM_ASM(FS.truncate("/sfa/sfa_test", 5));
 
   ofstream mem_file;
   mem_file.open ("/memfs/memfs_test");
@@ -37,7 +37,7 @@ int main () {
   mem_file.close();
   EM_ASM(FS.truncate("/memfs/memfs_test",4));
 
-  EM_ASM({console.log("NATIVEIOFS file content:", arrayToString(readEmscriptenFile("/nativeio/nativeio_test", 0, 10)))});
+  EM_ASM({console.log("SFAFS file content:", arrayToString(readEmscriptenFile("/sfa/sfa_test", 0, 10)))});
   EM_ASM({console.log("MEMFS file content:", arrayToString(readEmscriptenFile("/memfs/memfs_test", 0, 7)))});
   return 0;
 }
