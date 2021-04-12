@@ -15,8 +15,11 @@
  */
 
 Module.onRuntimeInitialized = function() {
-  FS.mkdir('/nativeio');
-  FS.mount(NATIVEIOFS, { root: '.' }, '/nativeio');
+  FS.mkdir('/sfa');
+  FS.mount(SFAFS, { root: '.' }, '/sfa');
+
+  // Storage Foundation requires explicit capacity allocations.
+  storageFoundation.requestCapacitySync(1000);
 
   FS.mkdir('/memfs');
   FS.mount(MEMFS, { root: '.' }, '/memfs');

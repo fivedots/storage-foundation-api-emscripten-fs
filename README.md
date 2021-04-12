@@ -14,17 +14,14 @@ and how to read a file from JavaScript.
 The mount_filesystems.js script shows how multiple filesystems can be made
 accessible to one module.
 
-Note: Storage Foundation API used to be called NativeIO. Some references to this
-name still remain, they will be removed after the new name has landed on Chrome.
-
 ## How-To
 
 To compile the example run:
 
 ```shell
-emcc --js-library ./library_nativeiofs.js \
+emcc --js-library ./library_sfafs.js \
   --post-js ./mount_filesystems.js --post-js ./read_file.js \
-  -s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE='["$NATIVEIOFS","$MEMFS"]' \
+  -s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE='["$SFAFS","$MEMFS"]' \
   -s USE_PTHREADS=1  \
   -o example.js example.cpp
 ```
