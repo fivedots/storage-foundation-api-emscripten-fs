@@ -17,10 +17,20 @@ mergeInto(LibraryManager.library, {
 
     /* Debugging */
 
+    benchmark: async function(name, fct) {
+      if('benchmark_results' in Module) {
+        let time_pre = performance.now();
+        let result = await fct();
+        let time_needed = performance.now() - time_pre;
+
+        Module.benchmark_results[`${name}_time`] = (Module.benchmark_results[`${name}_time`] || 0) + time_needed;
+        Module.benchmark_results[`${name}_num`] = (Module.benchmark_results[`${name}_num`] || 0) + 1;
+        return result;
+      }
+      return await fct();
+    },
+
     debug: function(...args) {
-      //entries = storageFoundation.listByPrefix('');
-      //decodedEntries = [];
-      //for (e of entries) { decodedEntries.push(AsyncFSImpl.decodePath(e)) }
       // console.log('sfafs', arguments);
     },
 
@@ -35,7 +45,10 @@ mergeInto(LibraryManager.library, {
 
     pathExists: async function(path) {
       let encodedPath = AsyncFSImpl.encodePath(path);
-      let entries = await storageFoundation.getAll();
+      let entries = await AsyncFSImpl.benchmark(
+        'getAll', 
+        () => {return storageFoundation.getAll();}
+      );
       return entries.includes(encodedPath);
     },
 
@@ -139,7 +152,10 @@ mergeInto(LibraryManager.library, {
       }
       else {
         let encodedPath = AsyncFSImpl.encodePath(absolutePath);
-        fh = await storageFoundation.open(encodedPath)
+        fh = await AsyncFSImpl.benchmark(
+          'open', 
+          () => {return storageFoundation.open(encodedPath);}
+        );
       }
       fh.seek_position = 0;
       fh.timestamp = Date.now();
@@ -177,7 +193,10 @@ mergeInto(LibraryManager.library, {
     },
 
     doFileStat: async function(fh, buf) {
-      let length = await fh.getLength();
+      let length = await AsyncFSImpl.benchmark(
+        'getLength', 
+        () => {return fh.getLength();}
+      );
       let modificationTime = new Date(fh.timestamp);
       let stat = {
           dev: null,
@@ -237,7 +256,10 @@ mergeInto(LibraryManager.library, {
       }
       else {
         encodedPath = AsyncFSImpl.encodePath(absolutePath);
-        let fh = await storageFoundation.open(encodedPath);
+        let fh = await AsyncFSImpl.benchmark(
+          'open', 
+          () => {return storageFoundation.open(encodedPath);}
+        );
         await AsyncFSImpl.doFileStat(fh, buf);
         await fh.close();
         return 0;
@@ -304,7 +326,10 @@ mergeInto(LibraryManager.library, {
         position = fh.seek_position;
       }
       var data = buffer.subarray(offset, offset + length);
-      let bytes_read = await fh.read(data, position);
+      let bytes_read = await AsyncFSImpl.benchmark(
+        'read', 
+        () => {return fh.read(data, position);}
+      );
       if (!seeking) fh.seek_position += bytes_read;
       buffer.set(data, offset);
       return bytes_read;
@@ -320,7 +345,10 @@ mergeInto(LibraryManager.library, {
         position = fh.seek_position;
       }
       var data = buffer.subarray(offset, offset + length);
-      let bytes_written = await fh.write(data, position);
+      let bytes_written = await AsyncFSImpl.benchmark(
+        'write', 
+        () => {return fh.write(data, position);}
+      );
       fh.timestamp = Date.now();
       if (!seeking) fh.seek_position += bytes_written;
       return bytes_written;
@@ -377,7 +405,10 @@ mergeInto(LibraryManager.library, {
 
       encodedPath = AsyncFSImpl.encodePath(absolutePath);
       try {
-        await storageFoundation.delete(encodedPath);
+        await AsyncFSImpl.benchmark(
+          'delete', 
+          () => {return storageFoundation.delete(encodedPath);}
+        );
         return 0;
       } catch(e) {
         console.log("Unlink failed with error", e);
@@ -388,7 +419,10 @@ mergeInto(LibraryManager.library, {
     truncate: async function(fd, length) {
       var fh = AsyncFSImpl.fileDescriptorToFileHandle[fd];
       fh.timestamp = Date.now();
-      await fh.setLength(length);
+      await AsyncFSImpl.benchmark(
+        'setLength', 
+        () => {return fh.setLength(length);}
+      );
       return 0;
     },
 
@@ -420,7 +454,10 @@ mergeInto(LibraryManager.library, {
       if(fd < 2) {
         return 0;
       }
-      await AsyncFSImpl.fileDescriptorToFileHandle[fd].close();
+      await AsyncFSImpl.benchmark(
+        'close', 
+        () => {return AsyncFSImpl.fileDescriptorToFileHandle[fd].close();}
+      );
       let path_to_delete = AsyncFSImpl.fileDescriptorToFileHandle[fd].path;
       delete AsyncFSImpl.fileDescriptorToFileHandle[fd];
       delete AsyncFSImpl.pathToFileDescriptor[path_to_delete];
