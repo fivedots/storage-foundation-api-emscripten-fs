@@ -3,6 +3,8 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+// See settings.js for more details.
+
 var SyscallsAsyncLibrary = {
   $AsyncFSImpl: {},
 
@@ -13,6 +15,13 @@ var SyscallsAsyncLibrary = {
 #if SYSCALL_DEBUG
       console.log('AsyncFS Syscall', arguments);
 #endif
+    },
+
+    handle: function(varargs, handle) {
+      return Asyncify.handleSleep(function(wakeUp) {
+        SYSCALLS.varargs = varargs;
+        handle(wakeUp);
+      });
     },
   },
 
@@ -235,8 +244,9 @@ var SyscallsAsyncLibrary = {
 
   fd_write__sig: 'iiiii',
   fd_write: function(fd, iov, iovcnt, pnum) {
-    AsyncFS.debug('fd_write', arguments);
+    let ar = arguments;
     return Asyncify.handleAsync(async () => {
+    AsyncFS.debug('fd_write', ar);
       if(fd == 1 || fd==2) {
         // TODO: remove once AsyncFSImpl supports stdio
         // Hack to support printf when AsyncFSImpl does not support stdio
@@ -250,7 +260,7 @@ var SyscallsAsyncLibrary = {
           }
           num += len;
         }
-        console.log(str);
+        Module.print(str);
         {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
         return 0;
       }
@@ -263,18 +273,31 @@ var SyscallsAsyncLibrary = {
 
   fd_read__sig: 'iiiii',
   fd_read: function(fd, iov, iovcnt, pnum) {
-    AsyncFS.debug('fd_read', arguments);
+    let ar = arguments;
     return Asyncify.handleAsync(async () => {
+    AsyncFS.debug('fd_read', ar);
       let result =  await AsyncFSImpl.readv(fd, iov, iovcnt);
       {{{ makeSetValue('pnum', 0, 'result', 'i32') }}}
       return 0;
     });
   },
 
+  fd_pwrite: function(fd, iov, iovcnt, {{{ defineI64Param('offset') }}}, pnum) {
+    console.log("WARNING! CALL TO UNIMPLEMENTED fd_pread syscall");
+    return 0;
+  },
+
+
+  fd_pread: function(fd, iov, iovcnt, {{{ defineI64Param('offset') }}}, pnum) {
+    console.log("WARNING! CALL TO UNIMPLEMENTED fd_pread syscall");
+    return 0;
+  },
+
   fd_seek__sig: 'iiiiii',
   fd_seek: function(fd, {{{ defineI64Param('offset') }}}, whence, newOffset) {
-    AsyncFS.debug('fd_seek', arguments);
+    let ar = arguments;
     return Asyncify.handleAsync(async () => {
+      AsyncFS.debug('fd_seek', ar);
       {{{ receiveI64ParamAsI32s('offset') }}}
       let result = await AsyncFSImpl.llseek(fd, offset_high, offset_low, whence);
       {{{ makeSetValue('newOffset', 0, 'result', 'i64') }}}
@@ -284,24 +307,26 @@ var SyscallsAsyncLibrary = {
 
   fd_close__sig: 'ii',
   fd_close: function(fd) {
-    AsyncFS.debug('fd_close', arguments);
+    let ar = arguments;
     return Asyncify.handleAsync(async () => {
+      AsyncFS.debug('fd_close', ar);
       return await AsyncFSImpl.close(fd);
     });
   },
 
   fd_fdstat_get__sig: 'iii',
   fd_fdstat_get: function(fd, pbuf) {
-    AsyncFS.debug('fd_fdstat_get', arguments);
     return Asyncify.handleAsync(async () => {
       console.log('WARNING called unimplemented fd_fdstat_get syscalls.');
-      return {{{ -cDefine('ENOSYS') }}};
+      return {{{ cDefine('ENOSYS') }}};
     });
   },
 
+  fd_sync__sig: 'ii',
   fd_sync: function(fd) {
-    AsyncFS.debug('fd_sync', arguments);
+    let ar = arguments;
     return Asyncify.handleAsync(async () => {
+    AsyncFS.debug('fd_sync', ar);
       return await AsyncFSImpl.fsync(fd);
     });
   },

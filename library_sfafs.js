@@ -16,6 +16,19 @@ mergeInto(LibraryManager.library, {
   $SFAFS__deps: ['$FS'],
   $SFAFS: {
 
+    benchmark: function(name, fct) {
+      if('benchmark_results' in Module) {
+        let time_pre = performance.now();
+        let result = fct();
+        let time_needed = performance.now() - time_pre;
+
+        Module.benchmark_results[`${name}_time`] = (Module.benchmark_results[`${name}_time`] || 0) + time_needed;
+        Module.benchmark_results[`${name}_num`] = (Module.benchmark_results[`${name}_num`] || 0) + 1;
+        return result;
+      }
+      return fct();
+    },
+
     /* Debugging */
 
     debug: function(...args) {
@@ -106,7 +119,11 @@ mergeInto(LibraryManager.library, {
 
 
     listByPrefix: function(prefix) {
-      return storageFoundation.getAllSync().filter(name => name.startsWith(prefix))
+      entries = SFAFS.benchmark(
+        'getAll', 
+        () => {return storageFoundation.getAllSync();}
+      );
+      return entries.filter(name => name.startsWith(prefix))
     },
 
     // Caches open file handles to simulate opening a file multiple times.
@@ -153,23 +170,41 @@ mergeInto(LibraryManager.library, {
     node_ops: {
       getattr: function(node) {
         SFAFS.debug('getattr', arguments);
+        let length;
         if (node.handle) {
-          var length = node.handle.getLength();
-        } else {
+          length = SFAFS.benchmark(
+            'getLength', 
+            () => {return node.handle.getLength();}
+          );
+        } 
+        else {
           // TODO: this double caching of opened files is probably redundant.
           // Clean up after publishing a clean design for the FS.
           var path = SFAFS.realPath(node);
           if(path in SFAFS.openFileHandles) {
             var fileHandle = SFAFS.openFileHandles[path]
-            var length = fileHandle.getLength();
-          } else {
-            var fileHandle = storageFoundation.openSync(SFAFS.encodePath(path))
-            var length = fileHandle.getLength();
-            fileHandle.close();
+            length = SFAFS.benchmark(
+              'getLength', 
+              () => {return fileHandle.getLength();}
+            );
+          } 
+          else {
+            let fileHandle = SFAFS.benchmark(
+              'open', 
+              () => {return storageFoundation.openSync(SFAFS.encodePath(path));}
+            );
+            length = SFAFS.benchmark(
+              'getLength', 
+              () => {return fileHandle.getLength();}
+            );
+            SFAFS.benchmark(
+              'close', 
+              () => {fileHandle.close();}
+            );  
           }
         }
 
-        var modificationTime = new Date(node.timestamp);
+        let modificationTime = new Date(node.timestamp);
         return {
           dev: null,
           ino: null,
@@ -202,15 +237,24 @@ mergeInto(LibraryManager.library, {
             if (!handle) {
               // Open a handle that is closed later.
               useOpen = true;
-              handle = storageFoundation.openSync(SFAFS.encodedPath(node));
-            }
-            handle.setLength(attr.size);
+              handle = SFAFS.benchmark(
+                'open', 
+                () => {return storageFoundation.openSync(SFAFS.encodedPath(path));}
+              );
+            }SFAFS.benchmark(
+              'setLength', 
+              () => {handle.setLength(attr.size);}
+            );
+            
           } catch (e) {
             if (!('code' in e)) throw e;
             throw new FS.ErrnoError(-e.errno);
           } finally {
             if (useOpen && handle) {
-              handle.close();
+              SFAFS.benchmark(
+                'close', 
+                () => {handle.close();}
+              );  
             }
           }
         }
@@ -272,7 +316,10 @@ mergeInto(LibraryManager.library, {
       unlink: function(parent, name) {
         SFAFS.debug('unlink', arguments);
         var path = SFAFS.joinPaths(SFAFS.realPath(parent), name);
-        storageFoundation.deleteSync(SFAFS.encodePath(path));
+        SFAFS.benchmark(
+          'delete', 
+          () => {return storageFoundation.deleteSync(SFAFS.encodePath(path));}
+        );
       },
 
       rmdir: function(parent, name) {
@@ -321,7 +368,10 @@ mergeInto(LibraryManager.library, {
 
           // Open existing file.
           if(!(path in SFAFS.openFileHandles)) {
-            SFAFS.openFileHandles[path] = storageFoundation.openSync(SFAFS.encodePath(path));
+            SFAFS.openFileHandles[path] = SFAFS.benchmark(
+              'open', 
+              () => {return storageFoundation.openSync(SFAFS.encodePath(path));}
+            );
           }
           stream.handle = SFAFS.openFileHandles[path];
           stream.node.handle = stream.handle;
@@ -339,7 +389,10 @@ mergeInto(LibraryManager.library, {
         stream.handle = null;
         --stream.node.refcount;
         if (stream.node.refcount <= 0) {
-          stream.node.handle.close();
+          SFAFS.benchmark(
+            'close', 
+            () => {stream.node.handle.close();}
+          );
           stream.node.handle = null;
           delete SFAFS.openFileHandles[SFAFS.realPath(stream.node)];
         }
@@ -357,7 +410,10 @@ mergeInto(LibraryManager.library, {
       read: function (stream, buffer, offset, length, position) {
         SFAFS.debug('read', arguments);
         var data = buffer.subarray(offset, offset + length);
-        var bytesRead = stream.handle.read(data, position);
+        let bytesRead = SFAFS.benchmark(
+          'read', 
+          () => {return stream.handle.read(data, position);}
+        );
         buffer.set(data, offset);
         return bytesRead;
       },
@@ -366,7 +422,11 @@ mergeInto(LibraryManager.library, {
         SFAFS.debug('write', arguments);
         stream.node.timestamp = Date.now();
         var data = buffer.subarray(offset, offset + length);
-        return stream.handle.write(data, position);
+        let bytesWritten = SFAFS.benchmark(
+          'write', 
+          () => {return stream.handle.write(data, position);}
+        );
+        return bytesWritten;
       },
 
       llseek: function (stream, offset, whence) {
