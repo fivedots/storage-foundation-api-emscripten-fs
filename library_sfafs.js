@@ -356,17 +356,18 @@ mergeInto(LibraryManager.library, {
 
       read: function (stream, buffer, offset, length, position) {
         SFAFS.debug('read', arguments);
-        var data = buffer.subarray(offset, offset + length);
-        var bytesRead = stream.handle.read(data, position);
-        buffer.set(data, offset);
-        return bytesRead;
+        let data = new Uint8Array(length);
+        let result = stream.handle.read(data, position);
+        buffer.set(result.buffer, offset);
+        return result.readBytes;
       },
 
       write: function (stream, buffer, offset, length, position) {
         SFAFS.debug('write', arguments);
         stream.node.timestamp = Date.now();
-        var data = buffer.subarray(offset, offset + length);
-        return stream.handle.write(data, position);
+        let data = new Uint8Array(buffer.slice(offset, offset+length));
+        let result = stream.handle.write(data, position);
+        return result.writtenBytes;
       },
 
       llseek: function (stream, offset, whence) {
