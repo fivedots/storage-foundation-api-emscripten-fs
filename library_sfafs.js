@@ -410,10 +410,14 @@ mergeInto(LibraryManager.library, {
       read: function (stream, buffer, offset, length, position) {
         SFAFS.debug('read', arguments);
         let data = new Uint8Array(length);
+<<<<<<< HEAD
         let result = SFAFS.benchmark(
           'read', 
           () => {return stream.handle.read(data, position);}
         );
+=======
+        let result = stream.handle.read(data, position);
+>>>>>>> 92b0ec132a4ed6a3c9c7b0920b2f43267c2cc5fc
         buffer.set(result.buffer, offset);
         return result.readBytes;
       },
@@ -422,10 +426,14 @@ mergeInto(LibraryManager.library, {
         SFAFS.debug('write', arguments);
         stream.node.timestamp = Date.now();
         let data = new Uint8Array(buffer.slice(offset, offset+length));
+<<<<<<< HEAD
         let result = SFAFS.benchmark(
           'write', 
           () => {return stream.handle.write(data, position);}
         );
+=======
+        let result = stream.handle.write(data, position);
+>>>>>>> 92b0ec132a4ed6a3c9c7b0920b2f43267c2cc5fc
         return result.writtenBytes;
       },
 
