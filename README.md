@@ -22,15 +22,10 @@ To compile the example run:
 emcc --js-library ./library_sfafs.js \
   --post-js ./mount_filesystems.js --post-js ./read_file.js \
   -s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE='["$SFAFS","$MEMFS"]' \
-  -s USE_PTHREADS=1  \
   -o example.js example.cpp
 ```
 
-> NOTE: USE_PTHREADS=1 is used to ensure that the Wasm module is instantiated
-> with a SharedArrayMemory as the backing structure of the memory. This is
-> required (for now) by the read/write calls.
-
-To see the result run:
+To see the result run the following with Chrome M91 or higher:
 
 ```shell
 emrun --serve_after_exit --no_browser index.html

@@ -239,7 +239,7 @@ mergeInto(LibraryManager.library, {
               useOpen = true;
               handle = SFAFS.benchmark(
                 'open', 
-                () => {return storageFoundation.openSync(SFAFS.encodedPath(path));}
+                () => {return storageFoundation.openSync(SFAFS.encodedPath(node));}
               );
             }SFAFS.benchmark(
               'setLength', 
@@ -409,24 +409,24 @@ mergeInto(LibraryManager.library, {
 
       read: function (stream, buffer, offset, length, position) {
         SFAFS.debug('read', arguments);
-        var data = buffer.subarray(offset, offset + length);
-        let bytesRead = SFAFS.benchmark(
+        let data = new Uint8Array(length);
+        let result = SFAFS.benchmark(
           'read', 
           () => {return stream.handle.read(data, position);}
         );
-        buffer.set(data, offset);
-        return bytesRead;
+        buffer.set(result.buffer, offset);
+        return result.readBytes;
       },
 
       write: function (stream, buffer, offset, length, position) {
         SFAFS.debug('write', arguments);
         stream.node.timestamp = Date.now();
-        var data = buffer.subarray(offset, offset + length);
-        let bytesWritten = SFAFS.benchmark(
+        let data = new Uint8Array(buffer.slice(offset, offset+length));
+        let result = SFAFS.benchmark(
           'write', 
           () => {return stream.handle.write(data, position);}
         );
-        return bytesWritten;
+        return result.writtenBytes;
       },
 
       llseek: function (stream, offset, whence) {
